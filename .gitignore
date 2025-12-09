@@ -33,3 +33,7 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Log files
+*.log
+chatbot_agent*.log
