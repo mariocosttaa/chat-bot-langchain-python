@@ -84,9 +84,6 @@ def main():
             
             log_debug(logger, f"Number of messages in context: {len(messages)}")
             
-            # Show typing indicator
-            print_typing_indicator()
-            
             # Invoke LLM with conversation history
             log_api_call_start(logger)
             response = llm.invoke(messages)
@@ -105,6 +102,11 @@ def main():
             
             # Log successful response
             log_successful_response(logger, response.content, elapsed_time)
+            
+            # Clear thinking indicator and show typing indicator right before displaying the message
+            from logger import clear_thinking
+            clear_thinking()
+            print_typing_indicator()
             
             # Print bot response with nice formatting
             print_bot_message(response.content, elapsed_time)

@@ -122,6 +122,11 @@ def print_thinking():
     print(f"{Colors.YELLOW}💭 Thinking...{Colors.RESET}", end="", flush=True)
 
 
+def clear_thinking():
+    """Clear the thinking indicator line."""
+    print("\r" + " " * 30 + "\r", end="", flush=True)  # Clear line
+
+
 def print_typing_indicator():
     """Show a typing indicator with animation."""
     for i in range(3):

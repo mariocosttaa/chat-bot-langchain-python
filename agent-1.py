@@ -24,7 +24,7 @@ from helper import convert_db_messages_to_langchain, format_error_message, handl
 # Initialize database - create/update table if it doesn't exist
 create_table()
 
-max_remember_messages = 25
+max_remember_messages = 5
 
 # Load environment variables
 load_dotenv()
@@ -87,9 +87,6 @@ def main():
             
             log_debug(logger, f"Total messages for context: {len(langchain_messages)}")
             
-            # Show typing indicator
-            print_typing_indicator()
-            
             # Invoke LLM with conversation history
             log_api_call_start(logger)
             response = llm.invoke(langchain_messages)
@@ -108,6 +105,11 @@ def main():
             
             # Log successful response
             log_successful_response(logger, response.content, elapsed_time)
+            
+            # Clear thinking indicator and show typing indicator right before displaying the message
+            from logger import clear_thinking
+            clear_thinking()
+            print_typing_indicator()
             
             # Print bot response with nice formatting
             print_bot_message(response.content, elapsed_time)
