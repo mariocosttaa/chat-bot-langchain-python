@@ -13,9 +13,15 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 # Local imports
 from db.database import add_message, get_last_messages, create_table
-from logger import setup_logger, log_session_start, log_session_end, log_user_input, log_api_call_start, log_successful_response, log_error, log_debug
+from logger import (
+    setup_logger, log_session_start, log_session_end, log_user_input, 
+    log_api_call_start, log_successful_response, log_error, log_debug,
+    print_welcome_message, print_user_message, print_bot_message, 
+    print_goodbye, print_thinking, print_typing_indicator
+)
+from helper import convert_db_messages_to_langchain, format_error_message, handle_error
 
-# Create the table if it doesn't exist
+# Initialize database - create/update table if it doesn't exist
 create_table()
 
 max_remember_messages = 25
@@ -39,34 +45,39 @@ SYSTEM_PROMPT = "You are a helpful and friendly assistant. Answer questions clea
 # Main function
 def main():
     log_session_start(logger)
-    print("🤖 Chatbot with memory is ready! Type 'exit' to quit.\n")
+    print_welcome_message("Chatbot with Database Memory")
     
     while True:
-        user_input = input("You: ")
+        from logger import Colors, print_separator
+        user_input = input(f"{Colors.BLUE}👤 You: {Colors.RESET}").strip()
+        
+        if not user_input:
+            continue
         
         if user_input.lower() in ['exit', 'quit', 'bye']:
             log_session_end(logger)
-            print("Goodbye!")
+            print_goodbye()
             break
+        
+        # Print separator line after user input
+        print_separator(Colors.BLUE)
+        print()  # Empty line after separator
         
         # Log user input
         log_user_input(logger, user_input)
         start_time = time.time()
         
         try:
+            # Show thinking indicator
+            print_thinking()
+            
             # Get last messages from database for context
             log_debug(logger, "Retrieving messages from database...")
-            messages = get_last_messages(max_remember_messages)
-            log_debug(logger, f"Retrieved {len(messages)} messages from database")
+            db_messages = get_last_messages(max_remember_messages)
+            log_debug(logger, f"Retrieved {len(db_messages)} messages from database")
             
-            # Convert database tuples to LangChain message format
-            langchain_messages = []
-            for msg_tuple in reversed(messages):  # Reverse to get chronological order
-                msg_id, user_msg, bot_response = msg_tuple
-                if user_msg:
-                    langchain_messages.append(HumanMessage(content=user_msg))
-                if bot_response:
-                    langchain_messages.append(AIMessage(content=bot_response))
+            # Convert database messages to LangChain format (without system prompt)
+            langchain_messages = convert_db_messages_to_langchain(db_messages)
             
             # Add current user message
             langchain_messages.append(HumanMessage(content=user_input))
@@ -76,38 +87,34 @@ def main():
             
             log_debug(logger, f"Total messages for context: {len(langchain_messages)}")
             
+            # Show typing indicator
+            print_typing_indicator()
+            
             # Invoke LLM with conversation history
             log_api_call_start(logger)
             response = llm.invoke(langchain_messages)
             elapsed_time = time.time() - start_time
             
-            # Save both user message and bot response together
+            # Save message to database (function handles tokens, cost, datetime, and agent_type)
             log_debug(logger, "Saving messages to database...")
-            add_message(user_input, response.content)
+            add_message(
+                message=user_input,
+                response_text=response.content,
+                agent_type='agent1',
+                llm=llm,
+                messages=langchain_messages,
+                response_obj=response
+            )
             
             # Log successful response
             log_successful_response(logger, response.content, elapsed_time)
             
-            print(f"\nBot: {response.content}\n")
+            # Print bot response with nice formatting
+            print_bot_message(response.content, elapsed_time)
         except Exception as e:
             elapsed_time = time.time() - start_time
-            log_error(logger, e, elapsed_time)
-            
-            # Get error title/type
-            error_title = type(e).__name__
-            error_message = str(e)
-            
-            # Extract simple error message (first line or key part)
-            if "RESOURCE_EXHAUSTED" in error_message or "429" in error_message:
-                simple_error = "API Quota Exceeded"
-            elif "API" in error_title or "Error" in error_title:
-                simple_error = error_title.replace("Error", "").strip()
-            else:
-                simple_error = error_title
-            
-            print(f"\n❌ Error: {simple_error}\n")
-            print("Chatbot closed due to error.\n")
-            break
+            if handle_error(e, logger, elapsed_time):
+                break
 
 if __name__ == "__main__":
     main()
