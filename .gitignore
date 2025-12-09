@@ -10,7 +10,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-database.db
+db/sqlite.db
 
 # Virtual Environment
 .venv/
@@ -37,3 +37,4 @@ Thumbs.db
 # Log files
 *.log
 chatbot_agent*.log
+logs/
