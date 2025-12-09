@@ -53,11 +53,24 @@ GOOGLE_API_KEY=your_google_api_key_here
 
 ## 💻 Usage
 
+**⚠️ Important:** Always activate the virtual environment before running the scripts!
+
+```bash
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
 ### Agent 1: Database-Persisted Chatbot 💾
 
 This version stores conversation history in a SQLite database (`database.db`), allowing conversations to persist across sessions.
 
+**Option 1: Using the helper script (recommended)**
 ```bash
+./run-agent1.sh
+```
+
+**Option 2: Manual activation**
+```bash
+source .venv/bin/activate
 python3 agent-1.py
 ```
 
@@ -70,7 +83,14 @@ python3 agent-1.py
 
 This version uses in-memory storage for faster performance, but conversation history is lost when the program exits.
 
+**Option 1: Using the helper script (recommended)**
 ```bash
+./run-agent2.sh
+```
+
+**Option 2: Manual activation**
+```bash
+source .venv/bin/activate
 python3 agent-2.py
 ```
 
@@ -86,6 +106,8 @@ chat-bot-langchain-python/
 ├── agent-1.py          # Chatbot with database persistence
 ├── agent-2.py          # Chatbot with in-memory storage
 ├── database.py          # Database helper functions
+├── run-agent1.sh        # Helper script to run agent-1
+├── run-agent2.sh        # Helper script to run agent-2
 ├── requirements.txt     # Python dependencies
 ├── .env                 # Environment variables (create this)
 └── README.md           # This file
