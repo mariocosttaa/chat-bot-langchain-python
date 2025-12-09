@@ -1,16 +1,19 @@
 # Standard library imports
 import os
+import time
 
 # Third-party imports
 from dotenv import load_dotenv
 
 # LangChain imports
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 # Google Gemini imports
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from database import add_message, get_last_messages, create_table
+# Local imports
+from db.database import add_message, get_last_messages, create_table
+from logger import setup_logger, log_session_start, log_session_end, log_user_input, log_api_call_start, log_successful_response, log_error, log_debug
 
 # Create the table if it doesn't exist
 create_table()
@@ -20,6 +23,9 @@ max_remember_messages = 25
 # Load environment variables
 load_dotenv()
 
+# Setup logger
+logger = setup_logger('agent1')
+
 # Initialize the Gemini Flash model
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
@@ -27,20 +33,31 @@ llm = ChatGoogleGenerativeAI(
     temperature=0.7
 )
 
+# System prompt - customize this to change the bot's behavior
+SYSTEM_PROMPT = "You are a helpful and friendly assistant. Answer questions clearly and concisely."
+
 # Main function
 def main():
+    log_session_start(logger)
     print("🤖 Chatbot with memory is ready! Type 'exit' to quit.\n")
     
     while True:
         user_input = input("You: ")
         
         if user_input.lower() in ['exit', 'quit', 'bye']:
+            log_session_end(logger)
             print("Goodbye!")
             break
         
+        # Log user input
+        log_user_input(logger, user_input)
+        start_time = time.time()
+        
         try:
             # Get last messages from database for context
+            log_debug(logger, "Retrieving messages from database...")
             messages = get_last_messages(max_remember_messages)
+            log_debug(logger, f"Retrieved {len(messages)} messages from database")
             
             # Convert database tuples to LangChain message format
             langchain_messages = []
@@ -54,15 +71,43 @@ def main():
             # Add current user message
             langchain_messages.append(HumanMessage(content=user_input))
             
+            # Add system prompt at the beginning
+            langchain_messages = [SystemMessage(content=SYSTEM_PROMPT)] + langchain_messages
+            
+            log_debug(logger, f"Total messages for context: {len(langchain_messages)}")
+            
             # Invoke LLM with conversation history
+            log_api_call_start(logger)
             response = llm.invoke(langchain_messages)
+            elapsed_time = time.time() - start_time
             
             # Save both user message and bot response together
+            log_debug(logger, "Saving messages to database...")
             add_message(user_input, response.content)
+            
+            # Log successful response
+            log_successful_response(logger, response.content, elapsed_time)
             
             print(f"\nBot: {response.content}\n")
         except Exception as e:
-            print(f"Error: {str(e)}\n")
+            elapsed_time = time.time() - start_time
+            log_error(logger, e, elapsed_time)
+            
+            # Get error title/type
+            error_title = type(e).__name__
+            error_message = str(e)
+            
+            # Extract simple error message (first line or key part)
+            if "RESOURCE_EXHAUSTED" in error_message or "429" in error_message:
+                simple_error = "API Quota Exceeded"
+            elif "API" in error_title or "Error" in error_title:
+                simple_error = error_title.replace("Error", "").strip()
+            else:
+                simple_error = error_title
+            
+            print(f"\n❌ Error: {simple_error}\n")
+            print("Chatbot closed due to error.\n")
+            break
 
 if __name__ == "__main__":
     main()
