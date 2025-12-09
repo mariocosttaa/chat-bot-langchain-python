@@ -2,6 +2,12 @@
 
 A feature-rich chatbot implementation using LangChain and Google's Gemini Flash model. This project includes two versions: one with persistent database storage and another with in-memory conversation history. Features include token counting, cost tracking, colored terminal UI, and comprehensive logging.
 
+## 🎬 Preview
+
+![Chatbot Demo](presentation.gif)
+
+*Interactive terminal chatbot with colored UI, typing indicators, and real-time responses*
+
 ## 🛠️ Tech Stack
 
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
